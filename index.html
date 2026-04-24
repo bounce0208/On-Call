@@ -912,7 +912,7 @@ function addBleep(){
   const num=document.getElementById('bq-number').value.trim();
   if(!num){ toast('Enter a bleep number'); document.getElementById('bq-number').focus(); return; }
   const ward=document.getElementById('bq-ward').value;
-  S.bleeps.unshift({id:Date.now(),num,ward,status:'waiting',added:Date.now()});
+  S.bleeps.push({id:Date.now(),num,ward,status:'waiting',added:Date.now()});
   document.getElementById('bq-number').value='';
   save(); renderBleepQueue(); updateBleepPill();
 }
