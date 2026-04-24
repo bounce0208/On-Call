@@ -58,7 +58,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .ward-count{font-size:10px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:1px 7px;color:var(--text3);letter-spacing:0;}
 
 /* ── TASK CARD ── */
-.task{display:flex;align-items:flex-start;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:border-color .15s,opacity .2s;position:relative;overflow:hidden;}
+.task-wrap{position:relative;margin-bottom:6px;border-radius:var(--r);overflow:hidden;}
+.task-swipe-bg{position:absolute;inset:0;background:var(--low-dim);display:flex;align-items:center;padding-left:18px;border-radius:var(--r);}
+.task-swipe-bg-icon{font-size:18px;color:var(--low);}
+.task{display:flex;align-items:flex-start;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;cursor:pointer;transition:border-color .15s,opacity .2s,transform .15s;position:relative;overflow:hidden;will-change:transform;}
 .task::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
 .task.urgent::before{background:var(--urgent);}
 .task.routine::before{background:var(--routine);}
@@ -72,6 +75,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .task-body{flex:1;min-width:0;}
 .task-meta{display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;}
 .task-bed{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);}
+.task-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-left:auto;}
 .type-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;letter-spacing:.03em;}
 .tb-bleep    {background:var(--bleep-bg);color:var(--bleep-c);border:1px solid var(--bleep-line);}
 .tb-handover {background:var(--ho-bg);color:var(--ho-c);border:1px solid var(--ho-line);}
@@ -81,6 +85,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .tb-other    {background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid var(--border2);}
 .task-name{font-size:14px;color:var(--text);line-height:1.35;}
 .task-notes{font-size:12px;color:var(--text2);margin-top:3px;font-style:italic;}
+.escalation-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);margin-top:4px;display:inline-block;}
+
+/* ── BLEEP NAV BADGE ── */
+.bnav-btn{position:relative;}
+.nav-badge{position:absolute;top:6px;right:calc(50% - 16px);background:var(--urgent);color:#fff;font-size:9px;font-weight:700;font-family:'DM Mono',monospace;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none;}
+
+/* ── HANDOVER SUMMARY MODAL ── */
+.handover-modal{background:var(--s1);border:1px solid var(--border2);border-top-left-radius:18px;border-top-right-radius:18px;width:100%;max-height:90vh;display:flex;flex-direction:column;}
+.handover-header{padding:20px 20px 12px;flex-shrink:0;}
+.handover-scroll{flex:1;overflow-y:auto;padding:0 20px 40px;}
+.handover-ward{margin-bottom:16px;}
+.handover-ward-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.handover-task-row{font-size:13px;color:var(--text);padding:4px 0;display:flex;gap:8px;align-items:baseline;}
+.handover-task-row.done-row{color:var(--text3);text-decoration:line-through;}
+.handover-task-badge{font-size:10px;font-weight:600;flex-shrink:0;}
+.handover-copy-btn{width:100%;padding:12px;background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;border-radius:var(--r);color:#fff;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:12px;flex-shrink:0;}
+
 
 /* ── EMPTY ── */
 .empty{text-align:center;padding:60px 20px;color:var(--text3);}
@@ -270,7 +291,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="hdr">
     <div class="hdr-top">
       <span class="hdr-wordmark">On-Call</span>
-      <span class="shift-pill none" id="shift-pill" onclick="goShift()">No shift</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text3);cursor:pointer;padding:3px 10px;border:1px solid var(--border2);border-radius:20px;" onclick="showHandover()">Handover</span>
+        <span class="shift-pill none" id="shift-pill" onclick="goShift()">No shift</span>
+      </div>
     </div>
     <div class="chips" id="type-chips"></div>
   </div>
@@ -466,12 +490,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <h3 id="modal-title"></h3>
     <div class="modal-detail">Ward: <span id="modal-ward"></span> &nbsp;·&nbsp; Bed: <span id="modal-bed"></span></div>
     <div class="modal-detail">Type: <span id="modal-type"></span> &nbsp;·&nbsp; Priority: <span id="modal-prio"></span></div>
+    <div class="modal-detail" id="modal-time-row">Logged: <span id="modal-time"></span></div>
+    <div class="modal-detail" id="modal-escalation-row" style="display:none;">Escalated: <span id="modal-escalation"></span></div>
     <div class="modal-detail" id="modal-notes-row" style="display:none;">Notes: <span id="modal-notes"></span></div>
     <div class="modal-actions">
       <button class="modal-btn done-btn" id="modal-done-btn" onclick="modalToggleDone()">Mark as done</button>
+      <button class="modal-btn" id="modal-escalate-btn" onclick="modalEscalate()">Flag escalation</button>
       <button class="modal-btn" onclick="modalEdit()">Edit task</button>
       <button class="modal-btn danger" onclick="modalDelete()">Delete task</button>
       <button class="modal-btn muted" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HANDOVER SUMMARY MODAL ── -->
+<div class="modal-bg" id="handover-modal" onclick="closeHandover(event)">
+  <div class="handover-modal">
+    <div class="handover-header">
+      <div class="modal-handle"></div>
+      <h3 style="margin-bottom:4px;">End of shift summary</h3>
+      <div style="font-size:12px;color:var(--text2);" id="handover-subtitle"></div>
+    </div>
+    <div class="handover-scroll" id="handover-content"></div>
+    <div style="padding:0 20px 20px;flex-shrink:0;">
+      <button class="handover-copy-btn" onclick="copyHandover()">Copy to clipboard</button>
     </div>
   </div>
 </div>
@@ -841,19 +883,74 @@ function renderList(){
   el.innerHTML=html||`<div class="empty"><div class="empty-icon">✓</div><p>All clear.</p></div>`;
 }
 
+function fmtTime(ts){
+  if(!ts) return '';
+  const d=new Date(ts);
+  return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
 function taskHTML(t){
-  return `<div class="task ${t.prio} ${t.done?'done':''}" onclick="openModal(${t.id})">
-    <div class="task-check"></div>
-    <div class="task-body">
-      <div class="task-meta">
-        <span class="task-bed">${esc(t.bed)}</span>
-        ${t.initials?`<span class="task-bed" style="color:var(--text2);">${esc(t.initials)}</span>`:''}
-        <span class="type-badge ${typeBadgeClass(t.type)}">${t.type.toUpperCase()}</span>
+  const escalationBadge = t.escalation
+    ? `<div class="escalation-badge">⬆ ${esc(t.escalation)}</div>`
+    : '';
+  return `<div class="task-wrap" id="twrap-${t.id}">
+    <div class="task-swipe-bg"><span class="task-swipe-bg-icon">✓</span></div>
+    <div class="task ${t.prio} ${t.done?'done':''}" id="task-${t.id}"
+      onclick="openModal(${t.id})"
+      ontouchstart="swipeStart(event,${t.id})"
+      ontouchmove="swipeMove(event,${t.id})"
+      ontouchend="swipeEnd(event,${t.id})">
+      <div class="task-check"></div>
+      <div class="task-body">
+        <div class="task-meta">
+          <span class="task-bed">${esc(t.bed)}</span>
+          ${t.initials?`<span class="task-bed" style="color:var(--text2);">${esc(t.initials)}</span>`:''}
+          <span class="type-badge ${typeBadgeClass(t.type)}">${t.type.toUpperCase()}</span>
+          <span class="task-time">${fmtTime(t.created)}</span>
+        </div>
+        <div class="task-name">${esc(t.desc)}</div>
+        ${escalationBadge}
+        ${t.notes?`<div class="task-notes">${esc(t.notes)}</div>`:''}
       </div>
-      <div class="task-name">${esc(t.desc)}</div>
-      ${t.notes?`<div class="task-notes">${esc(t.notes)}</div>`:''}
     </div>
   </div>`;
+}
+
+// ── Swipe to complete ──
+const swipeState={};
+function swipeStart(e,id){
+  const t=e.touches[0];
+  swipeState[id]={startX:t.clientX,startY:t.clientY,swiping:false,fired:false};
+}
+function swipeMove(e,id){
+  const st=swipeState[id]; if(!st) return;
+  const t=e.touches[0];
+  const dx=t.clientX-st.startX;
+  const dy=Math.abs(t.clientY-st.startY);
+  if(dy>20&&!st.swiping) return; // vertical scroll — ignore
+  if(dx>10) st.swiping=true;
+  if(!st.swiping) return;
+  e.preventDefault();
+  const el=document.getElementById(`task-${id}`);
+  if(!el) return;
+  const clamped=Math.max(0,Math.min(dx,100));
+  el.style.transform=`translateX(${clamped}px)`;
+  if(clamped>60&&!st.fired){
+    st.fired=true;
+    el.style.transition='transform .2s';
+    el.style.transform='translateX(110%)';
+    setTimeout(()=>{ quickComplete(id); },180);
+  }
+}
+function swipeEnd(e,id){
+  const st=swipeState[id]; if(!st||st.fired) return;
+  const el=document.getElementById(`task-${id}`);
+  if(el){ el.style.transform=''; }
+  delete swipeState[id];
+}
+function quickComplete(id){
+  const t=S.tasks.find(t=>t.id===id); if(!t) return;
+  t.done=true; save(); renderList(); toast('Done ✓');
 }
 
 // ════════════════════════════════════════
@@ -868,6 +965,18 @@ function openModal(id){
   document.getElementById('modal-bed').textContent=t.initials?`${t.bed} · ${t.initials}`:t.bed;
   document.getElementById('modal-type').textContent=cap(t.type);
   document.getElementById('modal-prio').textContent=cap(t.prio);
+  document.getElementById('modal-time').textContent=fmtTime(t.created);
+  // escalation
+  const er=document.getElementById('modal-escalation-row');
+  const eb=document.getElementById('modal-escalate-btn');
+  if(t.escalation){
+    er.style.display='block';
+    document.getElementById('modal-escalation').textContent=t.escalation;
+    eb.textContent='Edit escalation';
+  } else {
+    er.style.display='none';
+    eb.textContent='Flag escalation';
+  }
   const nr=document.getElementById('modal-notes-row');
   nr.style.display=t.notes?'block':'none';
   if(t.notes) document.getElementById('modal-notes').textContent=t.notes;
@@ -879,6 +988,14 @@ function openModal(id){
 function bgClose(e){ if(e.target===document.getElementById('task-modal')) closeModal(); }
 function closeModal(){ document.getElementById('task-modal').classList.remove('open'); modalId=null; }
 function modalToggleDone(){ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.done=!t.done; save(); closeModal(); renderList(); }
+function modalEscalate(){
+  const t=S.tasks.find(t=>t.id===modalId); if(!t) return;
+  const current=t.escalation||'';
+  const val=prompt('Escalation note (e.g. Reg aware, Consultant called):',current);
+  if(val===null) return;
+  t.escalation=val.trim()||'';
+  save(); closeModal(); renderList(); toast(t.escalation?'Escalation flagged':'Escalation cleared');
+}
 function modalEdit(){
   const t=S.tasks.find(t=>t.id===modalId); if(!t) return;
   closeModal(); editId=t.id;
@@ -934,6 +1051,9 @@ function bleepAction(id,action){
     document.getElementById('f-type').value='bleep';
     if(b&&b.ward) document.getElementById('f-ward').value=b.ward;
     if(b) document.getElementById('f-notes').value=`Bleep ${b.num}`;
+    // auto-clear the bleep from queue
+    S.bleeps=S.bleeps.filter(b=>b.id!==id);
+    save(); updateBleepNavBadge();
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     document.getElementById('screen-add').classList.add('active');
     setTimeout(()=>document.getElementById('f-desc').focus(),250);
@@ -949,6 +1069,19 @@ function updateBleepPill(){
   const n=S.bleeps.filter(b=>b.status==='waiting').length;
   const pill=document.getElementById('bq-count-pill');
   pill.textContent=n?`${n} waiting`:''; pill.style.display=n?'block':'none';
+  updateBleepNavBadge();
+}
+function updateBleepNavBadge(){
+  const n=S.bleeps.length;
+  document.querySelectorAll('[data-nav="bleeps"]').forEach(btn=>{
+    let badge=btn.querySelector('.nav-badge');
+    if(n>0){
+      if(!badge){ badge=document.createElement('span'); badge.className='nav-badge'; btn.appendChild(badge); }
+      badge.textContent=n;
+    } else {
+      if(badge) badge.remove();
+    }
+  });
 }
 function renderBleepQueue(){
   updateBleepPill();
@@ -1342,6 +1475,103 @@ function resetTheme(){
 }
 
 // ════════════════════════════════════════
+// HANDOVER SUMMARY
+// ════════════════════════════════════════
+function showHandover(){
+  if(!S.shift){ toast('No active shift'); return; }
+  const all=shiftTasks();
+  if(!all.length){ toast('No tasks this shift'); return; }
+
+  const d=new Date(S.shift.date+'T12:00:00');
+  const dateStr=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('handover-subtitle').textContent=
+    `${S.shift.label} · ${dateStr} · ${all.filter(t=>!t.done).length} pending`;
+
+  // group by ward
+  const wardOrder=S.shift.wards;
+  const byWard={};
+  all.forEach(t=>{ (byWard[t.ward]=byWard[t.ward]||[]).push(t); });
+
+  let html='';
+  wardOrder.forEach(ward=>{
+    const tasks=byWard[ward]; if(!tasks||!tasks.length) return;
+    html+=`<div class="handover-ward">
+      <div class="handover-ward-title">${esc(ward)}</div>`;
+    // pending first, done after
+    [...tasks].sort((a,b)=>{
+      if(a.done!==b.done) return a.done?1:-1;
+      return PRIO_ORDER[a.prio]-PRIO_ORDER[b.prio];
+    }).forEach(t=>{
+      const label=`${t.bed!=='—'?t.bed+' ':''}${t.initials?'('+t.initials+') ':''}${t.type.toUpperCase()}`;
+      html+=`<div class="handover-task-row ${t.done?'done-row':''}">
+        <span class="handover-task-badge type-badge ${typeBadgeClass(t.type)}">${t.type.toUpperCase()}</span>
+        <span>${t.bed!=='—'?esc(t.bed)+' · ':''} ${t.initials?esc(t.initials)+' · ':''} ${esc(t.desc)}${t.escalation?' <strong>['+esc(t.escalation)+']</strong>':''}${t.notes?' — '+esc(t.notes):''} <span style="color:var(--text3);font-size:11px;">${fmtTime(t.created)}</span></span>
+      </div>`;
+    });
+    html+='</div>';
+  });
+
+  document.getElementById('handover-content').innerHTML=html;
+  document.getElementById('handover-modal').classList.add('open');
+}
+
+function closeHandover(e){
+  if(e.target===document.getElementById('handover-modal'))
+    document.getElementById('handover-modal').classList.remove('open');
+}
+
+function copyHandover(){
+  if(!S.shift) return;
+  const all=shiftTasks();
+  const d=new Date(S.shift.date+'T12:00:00');
+  const dateStr=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  let text=`ON-CALL HANDOVER — ${S.shift.label.toUpperCase()} · ${dateStr}\n`;
+  text+=`${'─'.repeat(48)}\n\n`;
+
+  const wardOrder=S.shift.wards;
+  const byWard={};
+  all.forEach(t=>{ (byWard[t.ward]=byWard[t.ward]||[]).push(t); });
+
+  wardOrder.forEach(ward=>{
+    const tasks=byWard[ward]; if(!tasks||!tasks.length) return;
+    const pending=tasks.filter(t=>!t.done);
+    if(!pending.length) return;
+    text+=`${ward.toUpperCase()}\n`;
+    [...pending].sort((a,b)=>PRIO_ORDER[a.prio]-PRIO_ORDER[b.prio]).forEach(t=>{
+      const bed=t.bed!=='—'?`${t.bed} `:'';
+      const init=t.initials?`(${t.initials}) `:'';
+      const esc_note=t.escalation?` [${t.escalation}]`:'';
+      const note=t.notes?` — ${t.notes}`:'';
+      text+=`  [${t.prio.toUpperCase()}] ${t.type.toUpperCase()} · ${bed}${init}${t.desc}${esc_note}${note} (${fmtTime(t.created)})\n`;
+    });
+    text+='\n';
+  });
+
+  const done=all.filter(t=>t.done).length;
+  text+=`${'─'.repeat(48)}\n`;
+  text+=`${all.filter(t=>!t.done).length} pending · ${done} completed this shift`;
+
+  navigator.clipboard.writeText(text).then(()=>{ toast('Copied to clipboard'); }).catch(()=>{ toast('Copy failed — try selecting manually'); });
+}
+
+// ════════════════════════════════════════
+// SERVICE WORKER (auto-update)
+// ════════════════════════════════════════
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').then(reg=>{
+    reg.addEventListener('updatefound',()=>{
+      const newWorker=reg.installing;
+      newWorker.addEventListener('statechange',()=>{
+        if(newWorker.state==='installed'&&navigator.serviceWorker.controller){
+          // new version available — show non-intrusive toast
+          toast('Update available — close and reopen to refresh');
+        }
+      });
+    });
+  }).catch(()=>{});
+}
+
+// ════════════════════════════════════════
 // UTILS
 // ════════════════════════════════════════
 function esc(s){
@@ -1366,6 +1596,7 @@ populateWardDrop();
 populateTaskTypeDrop();
 populateBQWard();
 updatePill();
+updateBleepNavBadge();
 renderList();
 </script>
 </body>
