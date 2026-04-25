@@ -68,10 +68,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .task.low::before{background:var(--low);}
 .task.done{opacity:.35;}
 .task.done .task-name{text-decoration:line-through;color:var(--text2);}
+.task.waiting{opacity:.85;}
 .task:active{border-color:var(--border2);background:var(--s2);}
 .task-check{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;}
 .task.done .task-check{background:var(--low);border-color:var(--low);}
-.task.done .task-check::after{content:'';width:5px;height:8px;border-right:2px solid #000;border-bottom:2px solid #000;transform:rotate(45deg) translate(-1px,-1px);display:block;}
+.task.waiting .task-check{border-color:#818cf8;background:linear-gradient(to right,#818cf8 50%,transparent 50%);}
 .task-body{flex:1;min-width:0;}
 .task-meta{display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;}
 .task-bed{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);}
@@ -495,6 +496,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div class="modal-detail" id="modal-notes-row" style="display:none;">Notes: <span id="modal-notes"></span></div>
     <div class="modal-actions">
       <button class="modal-btn done-btn" id="modal-done-btn" onclick="modalToggleDone()">Mark as done</button>
+      <button class="modal-btn" id="modal-waiting-btn" onclick="modalSetWaiting()" style="color:#818cf8;border-color:rgba(129,140,248,0.3);background:rgba(129,140,248,0.12);">Mark as waiting</button>
       <button class="modal-btn" id="modal-escalate-btn" onclick="modalEscalate()">Flag escalation</button>
       <button class="modal-btn" onclick="modalEdit()">Edit task</button>
       <button class="modal-btn danger" onclick="modalDelete()">Delete task</button>
@@ -804,13 +806,14 @@ function submitTask(){
     prio:      curPrio,
     notes:     document.getElementById('f-notes').value.trim(),
     done:      false,
+    status:    'pending',
     shiftId:   S.shift?S.shift.id:null,
     shiftDate: S.shift?S.shift.date:todayStr(),
     created:   Date.now(),
   };
   if(editId){
     const idx=S.tasks.findIndex(t=>t.id===editId);
-    if(idx!==-1){ task.done=S.tasks[idx].done; S.tasks[idx]=task; }
+    if(idx!==-1){ task.done=S.tasks[idx].done; task.status=S.tasks[idx].status||'pending'; S.tasks[idx]=task; }
   } else { S.tasks.unshift(task); }
   save(); toast(editId?'Task updated':'Task added'); goList();
 }
@@ -829,8 +832,8 @@ function shiftTasks(){ return S.shift?S.tasks.filter(t=>t.shiftId===S.shift.id):
 
 function filteredTasks(){
   const all=shiftTasks(); const f=S.filter;
-  if(f==='pending') return all.filter(t=>!t.done);
-  if(f==='urgent')  return all.filter(t=>t.prio==='urgent'&&!t.done);
+  if(f==='pending') return all.filter(t=>t.status!=='done');
+  if(f==='urgent')  return all.filter(t=>t.prio==='urgent'&&t.status!=='done');
   if(f!=='all')     return all.filter(t=>t.type===f);
   return all;
 }
@@ -845,10 +848,10 @@ function typeBadgeClass(type){
 function renderList(){
   updatePill();
   const all=shiftTasks(); const visible=filteredTasks();
-  document.getElementById('s-pending').textContent=all.filter(t=>!t.done).length;
-  document.getElementById('s-urgent').textContent =all.filter(t=>t.prio==='urgent'&&!t.done).length;
-  document.getElementById('s-bleep').textContent  =all.filter(t=>t.type==='bleep'&&!t.done).length;
-  document.getElementById('s-done').textContent   =all.filter(t=>t.done).length;
+  document.getElementById('s-pending').textContent=all.filter(t=>t.status!=='done').length;
+  document.getElementById('s-urgent').textContent =all.filter(t=>t.prio==='urgent'&&t.status!=='done').length;
+  document.getElementById('s-bleep').textContent  =all.filter(t=>t.type==='bleep'&&t.status!=='done').length;
+  document.getElementById('s-done').textContent   =all.filter(t=>t.status==='done').length;
 
   const el=document.getElementById('task-list');
   if(!S.shift){
@@ -867,13 +870,13 @@ function renderList(){
     const wv=visible.filter(t=>t.ward===ward);
     const wa=all.filter(t=>t.ward===ward);
     if(!showAllWards&&wv.length===0) return;
-    const pendN=wa.filter(t=>!t.done).length;
+    const pendN=wa.filter(t=>t.status!=='done').length;
     const isOut=ward==='Outliers';
     html+=`<div class="ward-group"><div class="ward-label${isOut?' outliers-lbl':''}">${esc(ward)}<span class="ward-count">${pendN} pending</span></div>`;
     if(!wv.length){ html+=`<div style="font-size:13px;color:var(--text3);padding:6px 2px 4px;font-style:italic;">Clear</div>`; }
     else{
       [...wv].sort((a,b)=>{
-        if(a.done!==b.done) return a.done?1:-1;
+        if((a.status==='done')!==(b.status==='done')) return a.status==='done'?1:-1;
         if(PRIO_ORDER[a.prio]!==PRIO_ORDER[b.prio]) return PRIO_ORDER[a.prio]-PRIO_ORDER[b.prio];
         return b.created-a.created;
       }).forEach(t=>{ html+=taskHTML(t); });
@@ -895,7 +898,7 @@ function taskHTML(t){
     : '';
   return `<div class="task-wrap" id="twrap-${t.id}">
     <div class="task-swipe-bg"><span class="task-swipe-bg-icon">✓</span></div>
-    <div class="task ${t.prio} ${t.done?'done':''}" id="task-${t.id}"
+    <div class="task ${t.prio} ${t.status==='done'?'done':t.status==='waiting'?'waiting':''}" id="task-${t.id}"
       onclick="openModal(${t.id})"
       ontouchstart="swipeStart(event,${t.id})"
       ontouchmove="swipeMove(event,${t.id})"
@@ -950,7 +953,7 @@ function swipeEnd(e,id){
 }
 function quickComplete(id){
   const t=S.tasks.find(t=>t.id===id); if(!t) return;
-  t.done=true; save(); renderList(); toast('Done ✓');
+  t.done=true; t.status='done'; save(); renderList(); toast('Done ✓');
 }
 
 // ════════════════════════════════════════
@@ -981,13 +984,17 @@ function openModal(id){
   nr.style.display=t.notes?'block':'none';
   if(t.notes) document.getElementById('modal-notes').textContent=t.notes;
   const db=document.getElementById('modal-done-btn');
-  db.textContent=t.done?'Mark as pending':'Mark as done';
-  db.className=t.done?'modal-btn muted':'modal-btn done-btn';
+  db.textContent=t.status==='done'?'Mark as pending':'Mark as done';
+  db.className=t.status==='done'?'modal-btn muted':'modal-btn done-btn';
+  const wb=document.getElementById('modal-waiting-btn');
+  wb.textContent=t.status==='waiting'?'Mark as pending':'Mark as waiting';
+  wb.style.display=t.status==='done'?'none':'block';
   document.getElementById('task-modal').classList.add('open');
 }
 function bgClose(e){ if(e.target===document.getElementById('task-modal')) closeModal(); }
 function closeModal(){ document.getElementById('task-modal').classList.remove('open'); modalId=null; }
-function modalToggleDone(){ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.done=!t.done; save(); closeModal(); renderList(); }
+function modalToggleDone(){ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.status=t.status==='done'?'pending':'done'; t.done=t.status==='done'; save(); closeModal(); renderList(); }
+function modalSetWaiting(){ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.status=t.status==='waiting'?'pending':'waiting'; t.done=false; save(); closeModal(); renderList(); }
 function modalEscalate(){
   const t=S.tasks.find(t=>t.id===modalId); if(!t) return;
   const current=t.escalation||'';
@@ -1485,7 +1492,7 @@ function showHandover(){
   const d=new Date(S.shift.date+'T12:00:00');
   const dateStr=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('handover-subtitle').textContent=
-    `${S.shift.label} · ${dateStr} · ${all.filter(t=>!t.done).length} pending`;
+    `${S.shift.label} · ${dateStr} · ${all.filter(t=>t.status!=='done').length} pending`;
 
   // group by ward
   const wardOrder=S.shift.wards;
@@ -1499,11 +1506,11 @@ function showHandover(){
       <div class="handover-ward-title">${esc(ward)}</div>`;
     // pending first, done after
     [...tasks].sort((a,b)=>{
-      if(a.done!==b.done) return a.done?1:-1;
+      if((a.status==='done')!==(b.status==='done')) return a.status==='done'?1:-1;
       return PRIO_ORDER[a.prio]-PRIO_ORDER[b.prio];
     }).forEach(t=>{
       const label=`${t.bed!=='—'?t.bed+' ':''}${t.initials?'('+t.initials+') ':''}${t.type.toUpperCase()}`;
-      html+=`<div class="handover-task-row ${t.done?'done-row':''}">
+      html+=`<div class="handover-task-row ${t.status==='done'?'done-row':''}">
         <span class="handover-task-badge type-badge ${typeBadgeClass(t.type)}">${t.type.toUpperCase()}</span>
         <span>${t.bed!=='—'?esc(t.bed)+' · ':''} ${t.initials?esc(t.initials)+' · ':''} ${esc(t.desc)}${t.escalation?' <strong>['+esc(t.escalation)+']</strong>':''}${t.notes?' — '+esc(t.notes):''} <span style="color:var(--text3);font-size:11px;">${fmtTime(t.created)}</span></span>
       </div>`;
@@ -1534,7 +1541,7 @@ function copyHandover(){
 
   wardOrder.forEach(ward=>{
     const tasks=byWard[ward]; if(!tasks||!tasks.length) return;
-    const pending=tasks.filter(t=>!t.done);
+    const pending=tasks.filter(t=>t.status!=='done');
     if(!pending.length) return;
     text+=`${ward.toUpperCase()}\n`;
     [...pending].sort((a,b)=>PRIO_ORDER[a.prio]-PRIO_ORDER[b.prio]).forEach(t=>{
@@ -1547,9 +1554,9 @@ function copyHandover(){
     text+='\n';
   });
 
-  const done=all.filter(t=>t.done).length;
+  const done=all.filter(t=>t.status==='done').length;
   text+=`${'─'.repeat(48)}\n`;
-  text+=`${all.filter(t=>!t.done).length} pending · ${done} completed this shift`;
+  text+=`${all.filter(t=>t.status!=='done').length} pending · ${done} completed this shift`;
 
   navigator.clipboard.writeText(text).then(()=>{ toast('Copied to clipboard'); }).catch(()=>{ toast('Copy failed — try selecting manually'); });
 }
