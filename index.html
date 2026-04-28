@@ -302,8 +302,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="stats">
     <div class="stat"><div class="stat-n"     id="s-pending">0</div><div class="stat-l">Pending</div></div>
     <div class="stat"><div class="stat-n red" id="s-urgent">0</div> <div class="stat-l">Urgent</div></div>
-    <div class="stat"><div class="stat-n"     id="s-bleep">0</div>  <div class="stat-l">Bleeps</div></div>
     <div class="stat"><div class="stat-n"     id="s-done">0</div>   <div class="stat-l">Done</div></div>
+    <div class="stat"><div class="stat-n"     id="s-bleepcount" style="color:#a78bfa;">0</div><div class="stat-l">Bleeps</div></div>
   </div>
   <div class="scroll"><div id="task-list"></div></div>
   <button class="fab" onclick="goAdd()">+</button>
@@ -850,8 +850,8 @@ function renderList(){
   const all=shiftTasks(); const visible=filteredTasks();
   document.getElementById('s-pending').textContent=all.filter(t=>t.status!=='done').length;
   document.getElementById('s-urgent').textContent =all.filter(t=>t.prio==='urgent'&&t.status!=='done').length;
-  document.getElementById('s-bleep').textContent  =all.filter(t=>t.type==='bleep'&&t.status!=='done').length;
   document.getElementById('s-done').textContent   =all.filter(t=>t.status==='done').length;
+  document.getElementById('s-bleepcount').textContent=S.shift&&S.shift.bleepCount||0;
 
   const el=document.getElementById('task-list');
   if(!S.shift){
@@ -1037,6 +1037,7 @@ function addBleep(){
   if(!num){ toast('Enter a bleep number'); document.getElementById('bq-number').focus(); return; }
   const ward=document.getElementById('bq-ward').value;
   S.bleeps.push({id:Date.now(),num,ward,status:'waiting',added:Date.now()});
+  if(S.shift) S.shift.bleepCount=(S.shift.bleepCount||0)+1;
   document.getElementById('bq-number').value='';
   save(); renderBleepQueue(); updateBleepPill();
 }
