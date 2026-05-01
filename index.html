@@ -63,7 +63,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .task-swipe-bg-icon{font-size:18px;color:var(--low);}
 .task{display:flex;align-items:flex-start;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;cursor:pointer;transition:border-color .15s,opacity .2s,transform .15s;position:relative;overflow:hidden;will-change:transform;}
 .task::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
-.task.urgent::before{background:var(--urgent);}
+.task.urgent{background:rgba(248,113,113,0.18);border-color:rgba(248,113,113,0.45);}
+.task.urgent::before{background:var(--urgent);width:4px;}
+/* urgent section header */
+.urgent-section{margin-bottom:18px;}
+.urgent-header{display:flex;align-items:center;gap:8px;margin-bottom:7px;padding-left:2px;}
+.urgent-header-label{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--urgent);letter-spacing:.1em;text-transform:uppercase;}
+.urgent-header-count{font-size:10px;background:var(--urgent-dim);border:1px solid var(--urgent-line);border-radius:10px;padding:1px 7px;color:var(--urgent);}
+.urgent-header::after{content:'';flex:1;height:1px;background:rgba(248,113,113,0.2);}
+.urgent-divider{height:1px;background:var(--border);margin:16px 0 14px;}
 .task.routine::before{background:var(--routine);}
 .task.low::before{background:var(--low);}
 .task.done{opacity:.35;}
@@ -114,6 +122,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .stat{flex:1;background:var(--s1);padding:10px 0;text-align:center;}
 .stat-n{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--text);}
 .stat-n.red{color:var(--urgent);}
+.stat-n.amber{color:var(--routine);}
+.stat-n.blue{color:#818cf8;}
+.stat-n.green{color:var(--low);}
 .stat-l{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-top:1px;}
 
 /* ── FAB ── */
@@ -140,7 +151,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a869e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;}
 .field textarea{height:80px;resize:none;line-height:1.5;}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.prio-opts{display:flex;gap:8px;}
+/* task type grid */
+.task-type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.tt-opt{padding:9px 4px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-size:12px;font-weight:500;text-align:center;cursor:pointer;transition:all .15s;}
+.tt-opt.on{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.1);color:#a5b4fc;}
+/* status selector */
+.status-opts{display:flex;gap:8px;}
+.status-opt{flex:1;padding:9px 4px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-size:12px;font-weight:500;text-align:center;cursor:pointer;transition:all .15s;}
+.status-opt.on-pending{background:var(--routine-dim);border-color:var(--routine-line);color:var(--routine);}
+.status-opt.on-waiting{background:rgba(129,140,248,0.12);border-color:rgba(129,140,248,0.3);color:#818cf8;}
+.status-opt.on-done{background:var(--low-dim);border-color:var(--low-line);color:var(--low);}
+/* waiting-on quick suggestions */
+.waiting-suggestions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.wsug{font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);cursor:pointer;}
+.wsug:active{background:var(--s3);}
+
 .prio-opt{flex:1;padding:9px 0;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-size:13px;font-weight:500;text-align:center;cursor:pointer;transition:all .15s;}
 .prio-opt.sel-urgent {background:var(--urgent-dim); border-color:var(--urgent-line); color:var(--urgent);}
 .prio-opt.sel-routine{background:var(--routine-dim);border-color:var(--routine-line);color:var(--routine);}
@@ -297,13 +322,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <span class="shift-pill none" id="shift-pill" onclick="goShift()">No shift</span>
       </div>
     </div>
-    <div class="chips" id="type-chips"></div>
+    <div class="chips">
+      <span class="chip on"  onclick="setFilter('all',this)">All</span>
+      <span class="chip"     onclick="setFilter('pending',this)">Pending</span>
+      <span class="chip"     onclick="setFilter('waiting',this)">Waiting</span>
+      <span class="chip"     onclick="setFilter('urgent',this)">Urgent</span>
+    </div>
   </div>
   <div class="stats">
-    <div class="stat"><div class="stat-n"     id="s-pending">0</div><div class="stat-l">Pending</div></div>
-    <div class="stat"><div class="stat-n red" id="s-urgent">0</div> <div class="stat-l">Urgent</div></div>
-    <div class="stat"><div class="stat-n"     id="s-done">0</div>   <div class="stat-l">Done</div></div>
-    <div class="stat"><div class="stat-n"     id="s-bleepcount" style="color:#a78bfa;">0</div><div class="stat-l">Bleeps</div></div>
+    <div class="stat"><div class="stat-n amber" id="s-pending">0</div><div class="stat-l">Pending</div></div>
+    <div class="stat"><div class="stat-n blue"  id="s-waiting">0</div><div class="stat-l">Waiting</div></div>
+    <div class="stat"><div class="stat-n green" id="s-done">0</div>  <div class="stat-l">Done</div></div>
+    <div class="stat"><div class="stat-n"       id="s-bleepcount" style="color:#a78bfa;">0</div><div class="stat-l">Bleeps</div></div>
   </div>
   <div class="scroll"><div id="task-list"></div></div>
   <button class="fab" onclick="goAdd()">+</button>
@@ -342,7 +372,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
     <div class="field">
       <label>Type</label>
-      <select id="f-type"></select>
+      <div class="task-type-grid" id="f-type-grid"></div>
     </div>
     <div class="field">
       <label>Priority</label>
@@ -353,8 +383,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       </div>
     </div>
     <div class="field">
+      <label>Status</label>
+      <div class="status-opts" id="f-status-opts">
+        <div class="status-opt on-pending" data-s="pending" onclick="selTaskStatus(this)">Pending</div>
+        <div class="status-opt" data-s="waiting" onclick="selTaskStatus(this)">Waiting</div>
+        <div class="status-opt" data-s="done" onclick="selTaskStatus(this)">Done</div>
+      </div>
+    </div>
+    <div class="field" id="f-waiting-on-field" style="display:none;">
+      <label>Waiting on</label>
+      <input type="text" id="f-waiting-on" placeholder="e.g. Bloods, imaging, callback..." autocomplete="off">
+      <div class="waiting-suggestions">
+        <span class="wsug" onclick="setWaitingSug('Bloods')">Bloods</span>
+        <span class="wsug" onclick="setWaitingSug('Imaging')">Imaging</span>
+        <span class="wsug" onclick="setWaitingSug('Callback')">Callback</span>
+        <span class="wsug" onclick="setWaitingSug('Bed manager')">Bed manager</span>
+        <span class="wsug" onclick="setWaitingSug('Reg review')">Reg review</span>
+        <span class="wsug" onclick="setWaitingSug('Family')">Family</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Escalation (optional)</label>
+      <input type="text" id="f-escalation" placeholder="e.g. Reg aware, Consultant called..." autocomplete="off">
+    </div>
+    <div class="field">
       <label>Notes (optional)</label>
-      <textarea id="f-notes" placeholder="Awaiting callback, family aware, bloods pending..."></textarea>
+      <textarea id="f-notes" placeholder="Additional details..."></textarea>
     </div>
   </div>
 </div>
@@ -492,12 +546,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div class="modal-detail">Ward: <span id="modal-ward"></span> &nbsp;·&nbsp; Bed: <span id="modal-bed"></span></div>
     <div class="modal-detail">Type: <span id="modal-type"></span> &nbsp;·&nbsp; Priority: <span id="modal-prio"></span></div>
     <div class="modal-detail" id="modal-time-row">Logged: <span id="modal-time"></span></div>
+    <div class="modal-detail" id="modal-waiting-row" style="display:none;">Waiting on: <span id="modal-waiting"></span></div>
     <div class="modal-detail" id="modal-escalation-row" style="display:none;">Escalated: <span id="modal-escalation"></span></div>
     <div class="modal-detail" id="modal-notes-row" style="display:none;">Notes: <span id="modal-notes"></span></div>
     <div class="modal-actions">
       <button class="modal-btn done-btn" id="modal-done-btn" onclick="modalToggleDone()">Mark as done</button>
       <button class="modal-btn" id="modal-waiting-btn" onclick="modalSetWaiting()" style="color:#818cf8;border-color:rgba(129,140,248,0.3);background:rgba(129,140,248,0.12);">Mark as waiting</button>
-      <button class="modal-btn" id="modal-escalate-btn" onclick="modalEscalate()">Flag escalation</button>
       <button class="modal-btn" onclick="modalEdit()">Edit task</button>
       <button class="modal-btn danger" onclick="modalDelete()">Delete task</button>
       <button class="modal-btn muted" onclick="closeModal()">Cancel</button>
@@ -722,12 +776,7 @@ function populateWardDrop(){
   if(prev && wards.includes(prev)) sel.value = prev;
 }
 
-function populateTaskTypeDrop(){
-  const sel = document.getElementById('f-type');
-  const prev = sel.value;
-  sel.innerHTML = S.taskTypes.map(t=>`<option value="${esc(t.toLowerCase())}">${cap(t)}</option>`).join('');
-  if(prev && S.taskTypes.map(t=>t.toLowerCase()).includes(prev)) sel.value = prev;
-}
+function populateTaskTypeDrop(){ buildTaskTypeGrid(); }
 
 function renderShiftScreen(){
   const inp = document.getElementById('shift-date-input');
@@ -773,47 +822,83 @@ function delHistory(e,i){ e.stopPropagation(); S.history.splice(i,1); save(); re
 // ════════════════════════════════════════
 let editId  = null;
 let curPrio = 'routine';
+let curTaskStatus = 'pending';
+let curTaskType = '';
 
 function selPrio(el){
-  curPrio = el.dataset.p;
+  curPrio=el.dataset.p;
   document.querySelectorAll('.prio-opt').forEach(o=>o.className='prio-opt');
   el.classList.add(`sel-${curPrio}`);
 }
 
+function selTaskStatus(el){
+  curTaskStatus=el.dataset.s;
+  document.querySelectorAll('#f-status-opts .status-opt').forEach(o=>o.className='status-opt');
+  el.classList.add('on-'+curTaskStatus);
+  document.getElementById('f-waiting-on-field').style.display=curTaskStatus==='waiting'?'block':'none';
+}
+
+function setWaitingSug(v){
+  document.getElementById('f-waiting-on').value=v;
+  document.getElementById('f-waiting-on').focus();
+}
+
+function buildTaskTypeGrid(){
+  const grid=document.getElementById('f-type-grid'); if(!grid) return;
+  grid.innerHTML=S.taskTypes.map(t=>{
+    const v=t.toLowerCase();
+    return '<div class="tt-opt'+(curTaskType===v?' on':'')+'" onclick="pickTaskType(this,\''+esc(v)+'\')">'+cap(t)+'</div>';
+  }).join('');
+}
+
+function pickTaskType(el,v){
+  curTaskType=v;
+  document.querySelectorAll('.tt-opt').forEach(o=>o.classList.remove('on'));
+  el.classList.add('on');
+}
+
 function resetForm(){
-  editId=null; curPrio='routine';
+  editId=null; curPrio='routine'; curTaskStatus='pending';
+  curTaskType=S.taskTypes&&S.taskTypes.length?S.taskTypes[0].toLowerCase():'bleep';
   document.getElementById('add-title').textContent='New task';
   document.getElementById('f-desc').value='';
   document.getElementById('f-bed').value='';
   document.getElementById('f-initials').value='';
   document.getElementById('f-notes').value='';
+  document.getElementById('f-escalation').value='';
+  document.getElementById('f-waiting-on').value='';
+  document.getElementById('f-waiting-on-field').style.display='none';
   document.querySelectorAll('.prio-opt').forEach(o=>o.className='prio-opt');
   document.querySelector('[data-p="routine"]').classList.add('sel-routine');
+  document.querySelectorAll('#f-status-opts .status-opt').forEach(o=>o.className='status-opt');
+  document.querySelector('#f-status-opts [data-s="pending"]').classList.add('on-pending');
   populateWardDrop();
-  populateTaskTypeDrop();
+  buildTaskTypeGrid();
 }
 
 function submitTask(){
-  const desc = document.getElementById('f-desc').value.trim();
+  const desc=document.getElementById('f-desc').value.trim();
   if(!desc){ toast('Add a description'); document.getElementById('f-desc').focus(); return; }
-  const task = {
+  const task={
     id:        editId||S.nextId++,
     desc,
     ward:      document.getElementById('f-ward').value,
     bed:       document.getElementById('f-bed').value.trim()||'—',
     initials:  document.getElementById('f-initials').value.trim().toUpperCase()||'',
-    type:      document.getElementById('f-type').value,
+    type:      curTaskType||S.taskTypes[0]||'bleep',
     prio:      curPrio,
+    status:    curTaskStatus,
+    done:      curTaskStatus==='done',
+    waitingOn: document.getElementById('f-waiting-on').value.trim(),
+    escalation:document.getElementById('f-escalation').value.trim(),
     notes:     document.getElementById('f-notes').value.trim(),
-    done:      false,
-    status:    'pending',
     shiftId:   S.shift?S.shift.id:null,
     shiftDate: S.shift?S.shift.date:todayStr(),
     created:   Date.now(),
   };
   if(editId){
     const idx=S.tasks.findIndex(t=>t.id===editId);
-    if(idx!==-1){ task.done=S.tasks[idx].done; task.status=S.tasks[idx].status||'pending'; S.tasks[idx]=task; }
+    if(idx!==-1) S.tasks[idx]=task;
   } else { S.tasks.unshift(task); }
   save(); toast(editId?'Task updated':'Task added'); goList();
 }
@@ -832,9 +917,9 @@ function shiftTasks(){ return S.shift?S.tasks.filter(t=>t.shiftId===S.shift.id):
 
 function filteredTasks(){
   const all=shiftTasks(); const f=S.filter;
-  if(f==='pending') return all.filter(t=>t.status!=='done');
+  if(f==='pending') return all.filter(t=>t.status==='pending');
+  if(f==='waiting') return all.filter(t=>t.status==='waiting');
   if(f==='urgent')  return all.filter(t=>t.prio==='urgent'&&t.status!=='done');
-  if(f!=='all')     return all.filter(t=>t.type===f);
   return all;
 }
 
@@ -848,8 +933,8 @@ function typeBadgeClass(type){
 function renderList(){
   updatePill();
   const all=shiftTasks(); const visible=filteredTasks();
-  document.getElementById('s-pending').textContent=all.filter(t=>t.status!=='done').length;
-  document.getElementById('s-urgent').textContent =all.filter(t=>t.prio==='urgent'&&t.status!=='done').length;
+  document.getElementById('s-pending').textContent=all.filter(t=>t.status==='pending').length;
+  document.getElementById('s-waiting').textContent=all.filter(t=>t.status==='waiting').length;
   document.getElementById('s-done').textContent   =all.filter(t=>t.status==='done').length;
   document.getElementById('s-bleepcount').textContent=S.shift&&S.shift.bleepCount||0;
 
@@ -866,8 +951,22 @@ function renderList(){
   const wardList=showAllWards?S.shift.wards:[...new Set(visible.map(t=>t.ward))];
 
   let html='';
+
+  // ── Urgent section pinned to top (all filters except 'waiting') ──
+  if(S.filter!=='waiting'){
+    const urgentTasks=all.filter(t=>t.prio==='urgent'&&t.status==='pending');
+    if(urgentTasks.length){
+      html+=`<div class="urgent-section">`;
+      html+=`<div class="urgent-header"><span class="urgent-header-label">&#x26A0; Urgent</span><span class="urgent-header-count">${urgentTasks.length}</span></div>`;
+      [...urgentTasks].sort((a,b)=>b.created-a.created).forEach(t=>{ html+=taskHTML(t); });
+      html+=`</div><div class="urgent-divider"></div>`;
+    }
+  }
+
+  const showUrgentSection = S.filter!=='waiting';
   wardList.forEach(ward=>{
-    const wv=visible.filter(t=>t.ward===ward);
+    // exclude urgent pending from ward groups — they're pinned at top
+    const wv=visible.filter(t=>t.ward===ward&&!(showUrgentSection&&t.prio==='urgent'&&t.status==='pending'));
     const wa=all.filter(t=>t.ward===ward);
     if(!showAllWards&&wv.length===0) return;
     const pendN=wa.filter(t=>t.status!=='done').length;
@@ -912,6 +1011,7 @@ function taskHTML(t){
           <span class="task-time">${fmtTime(t.created)}</span>
         </div>
         <div class="task-name">${esc(t.desc)}</div>
+        ${t.waitingOn?`<div class="task-notes" style="color:#818cf8;">\u21BB ${esc(t.waitingOn)}</div>`:''}
         ${escalationBadge}
         ${t.notes?`<div class="task-notes">${esc(t.notes)}</div>`:''}
       </div>
@@ -969,17 +1069,12 @@ function openModal(id){
   document.getElementById('modal-type').textContent=cap(t.type);
   document.getElementById('modal-prio').textContent=cap(t.prio);
   document.getElementById('modal-time').textContent=fmtTime(t.created);
-  // escalation
+  const wr=document.getElementById('modal-waiting-row');
+  wr.style.display=t.waitingOn?'block':'none';
+  if(t.waitingOn) document.getElementById('modal-waiting').textContent=t.waitingOn;
   const er=document.getElementById('modal-escalation-row');
-  const eb=document.getElementById('modal-escalate-btn');
-  if(t.escalation){
-    er.style.display='block';
-    document.getElementById('modal-escalation').textContent=t.escalation;
-    eb.textContent='Edit escalation';
-  } else {
-    er.style.display='none';
-    eb.textContent='Flag escalation';
-  }
+  er.style.display=t.escalation?'block':'none';
+  if(t.escalation) document.getElementById('modal-escalation').textContent=t.escalation;
   const nr=document.getElementById('modal-notes-row');
   nr.style.display=t.notes?'block':'none';
   if(t.notes) document.getElementById('modal-notes').textContent=t.notes;
@@ -995,14 +1090,6 @@ function bgClose(e){ if(e.target===document.getElementById('task-modal')) closeM
 function closeModal(){ document.getElementById('task-modal').classList.remove('open'); modalId=null; }
 function modalToggleDone(){ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.status=t.status==='done'?'pending':'done'; t.done=t.status==='done'; save(); closeModal(); renderList(); }
 function modalSetWaiting(){ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.status=t.status==='waiting'?'pending':'waiting'; t.done=false; save(); closeModal(); renderList(); }
-function modalEscalate(){
-  const t=S.tasks.find(t=>t.id===modalId); if(!t) return;
-  const current=t.escalation||'';
-  const val=prompt('Escalation note (e.g. Reg aware, Consultant called):',current);
-  if(val===null) return;
-  t.escalation=val.trim()||'';
-  save(); closeModal(); renderList(); toast(t.escalation?'Escalation flagged':'Escalation cleared');
-}
 function modalEdit(){
   const t=S.tasks.find(t=>t.id===modalId); if(!t) return;
   closeModal(); editId=t.id;
@@ -1012,11 +1099,16 @@ function modalEdit(){
   document.getElementById('f-bed').value=t.bed==='—'?'':t.bed;
   document.getElementById('f-initials').value=t.initials||'';
   document.getElementById('f-ward').value=t.ward;
-  document.getElementById('f-type').value=t.type;
   document.getElementById('f-notes').value=t.notes||'';
-  curPrio=t.prio;
+  document.getElementById('f-escalation').value=t.escalation||'';
+  document.getElementById('f-waiting-on').value=t.waitingOn||'';
+  document.getElementById('f-waiting-on-field').style.display=t.status==='waiting'?'block':'none';
+  curPrio=t.prio; curTaskStatus=t.status||'pending'; curTaskType=t.type||'';
   document.querySelectorAll('.prio-opt').forEach(o=>o.className='prio-opt');
   document.querySelector(`[data-p="${t.prio}"]`).classList.add(`sel-${t.prio}`);
+  document.querySelectorAll('#f-status-opts .status-opt').forEach(o=>o.className='status-opt');
+  document.querySelector(`#f-status-opts [data-s="${curTaskStatus}"]`).classList.add('on-'+curTaskStatus);
+  buildTaskTypeGrid();
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-add').classList.add('active');
 }
@@ -1056,7 +1148,8 @@ function bleepAction(id,action){
   if(action==='log'){
     const b=S.bleeps.find(b=>b.id===id);
     resetForm();
-    document.getElementById('f-type').value='bleep';
+    curTaskType='bleep';
+    buildTaskTypeGrid();
     if(b&&b.ward) document.getElementById('f-ward').value=b.ward;
     if(b) document.getElementById('f-notes').value=`Bleep ${b.num}`;
     // auto-clear the bleep from queue
@@ -1599,9 +1692,8 @@ function toast(msg){
 load();
 applyTheme(S.activeTheme||'midnight');
 buildNavs();
-buildFilterChips();
+buildTaskTypeGrid();
 populateWardDrop();
-populateTaskTypeDrop();
 populateBQWard();
 updatePill();
 updateBleepNavBadge();
