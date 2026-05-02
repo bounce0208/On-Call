@@ -1766,12 +1766,11 @@ function renderHandoverScreen(){
   // Patient picker from task list
   if(S.shift){
     const all=shiftTasks();
-    // group by ward, get unique ward+bed combos
     const wards=S.shift.wards;
     wards.forEach(ward=>{
-      const wardTasks=all.filter(t=>t.ward===ward&&t.status!=='done');
+      const wardTasks=all.filter(t=>t.ward===ward);
       if(!wardTasks.length) return;
-      // unique bed+initials combos
+      // unique bed+initials combos from ALL tasks (not just outstanding)
       const seen=new Set();
       const patients=[];
       wardTasks.forEach(t=>{
@@ -1781,15 +1780,22 @@ function renderHandoverScreen(){
           patients.push({ward,bed:t.bed,initials:t.initials});
         }
       });
+      // sort by bed number naturally
+      patients.sort((a,b)=>{
+        const an=parseInt((a.bed||'').replace(/\D/g,''),10);
+        const bn=parseInt((b.bed||'').replace(/\D/g,''),10);
+        if(!isNaN(an)&&!isNaN(bn)) return an-bn;
+        return (a.bed||'').localeCompare(b.bed||'');
+      });
       if(!patients.length) return;
       html+=`<div class="ho-pick-section"><div class="ho-pick-label">${esc(ward)}</div>`;
       patients.forEach(p=>{
         const alreadyAdded=S.hoEntries.some(e=>e.ward===p.ward&&e.bed===p.bed);
-        const pendingTasks=wardTasks.filter(t=>t.bed===p.bed&&(t.status==='pending'||t.status==='waiting'));
+        const outstanding=wardTasks.filter(t=>t.bed===p.bed&&(t.status==='pending'||t.status==='waiting')).length;
         html+=`<div class="ho-pick-row">
           <div class="ho-pick-info">
-            <div class="ho-pick-name">${esc(p.bed)} ${p.initials?'· '+esc(p.initials):''}</div>
-            <div class="ho-pick-sub">${pendingTasks.length} outstanding job${pendingTasks.length!==1?'s':''}</div>
+            <div class="ho-pick-name">${esc(p.bed)}${p.initials?' · '+esc(p.initials):''}</div>
+            <div class="ho-pick-sub">${outstanding} outstanding job${outstanding!==1?'s':''}</div>
           </div>
           ${alreadyAdded
             ? `<span style="font-size:11px;color:var(--text3);">Added</span>`
