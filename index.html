@@ -638,6 +638,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div class="modal-actions">
       <button class="modal-btn done-btn" id="modal-done-btn" onclick="modalToggleDone()">Mark as done</button>
       <button class="modal-btn" id="modal-waiting-btn" onclick="modalSetWaiting()" style="color:#818cf8;border-color:rgba(129,140,248,0.3);background:rgba(129,140,248,0.12);">Mark as waiting</button>
+      <button class="modal-btn" id="modal-handover-btn" onclick="modalAddToHandover()">Add to handover</button>
       <button class="modal-btn" onclick="modalEdit()">Edit task</button>
       <button class="modal-btn danger" onclick="modalDelete()">Delete task</button>
       <button class="modal-btn muted" onclick="closeModal()">Cancel</button>
@@ -725,7 +726,7 @@ function buildNavs(){
     const el = document.getElementById(id);
     el.className = 'bnav';
     el.innerHTML = NAV_ITEMS.map(n=>
-      `<button class="bnav-btn" data-nav="${n.id}" onclick="navTo('${n.id}')">${n.icon}${n.label}</button>`
+      '<button class="bnav-btn" data-nav="'+n.id+'" onclick="navTo(\''+n.id+'\')">'+n.icon+n.label+'</button>'
     ).join('');
   });
 }
@@ -817,7 +818,7 @@ function renderWardGrid(){
   grid.innerHTML = S.wards.map(w=>{
     if(isAll) return `<div class="ward-chip locked">${esc(w)}</div>`;
     const on = selWards.includes(w);
-    return `<div class="ward-chip ${on?'on':''}" onclick="toggleWard('${esc(w)}',this)">${esc(w)}</div>`;
+    return '<div class="ward-chip '+(on?'on':'')+'" onclick="toggleWard(\''+esc(w)+'\',this)">'+esc(w)+'</div>';
   }).join('');
 }
 
@@ -1081,33 +1082,39 @@ function fmtTime(ts){
   return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 
-function taskHTML(t, showWard=false){
-  const escalationBadge = t.escalation
-    ? `<div class="escalation-badge">⬆ ${esc(t.escalation)}</div>`
+function taskHTML(t, showWard){
+  var sw = showWard||false;
+  var escalationBadge = t.escalation
+    ? '<div class="escalation-badge">\u2B06 '+esc(t.escalation)+'</div>'
     : '';
-  return `<div class="task-wrap" id="twrap-${t.id}">
-    <div class="task-swipe-bg"><span class="task-swipe-bg-icon">✓</span></div>
-    <div class="task ${t.prio} ${t.status==='done'?'done':t.status==='waiting'?'waiting':''}" id="task-${t.id}"
-      onclick="openModal(${t.id})"
-      ontouchstart="swipeStart(event,${t.id})"
-      ontouchmove="swipeMove(event,${t.id})"
-      ontouchend="swipeEnd(event,${t.id})">
-      <div class="task-check"></div>
-      <div class="task-body">
-        <div class="task-meta">
-          ${showWard?`<span class="task-bed" style="color:var(--text);font-weight:500;">${esc(t.ward)}</span><span style="color:var(--text3);font-size:11px;">·</span>`:''}
-          <span class="task-bed">${esc(t.bed)}</span>
-          ${t.initials?`<span class="task-bed" style="color:var(--text2);">${esc(t.initials)}</span>`:''}
-          <span class="type-badge ${typeBadgeClass(t.type)}">${t.type.toUpperCase()}</span>
-          <span class="task-time">${fmtTime(t.created)}</span>
-        </div>
-        <div class="task-name">${esc(t.desc)}</div>
-        ${t.waitingOn?`<div class="task-notes" style="color:#818cf8;">\u21BB ${esc(t.waitingOn)}</div>`:''}
-        ${escalationBadge}
-        ${t.notes?`<div class="task-notes">${esc(t.notes)}</div>`:''}
-      </div>
-    </div>
-  </div>`;
+  var taskCls = 'task '+t.prio+' '+(t.status==='done'?'done':t.status==='waiting'?'waiting':'');
+  var wardHTML = sw ? '<span class="task-bed" style="color:var(--text);font-weight:500;">'+esc(t.ward)+'</span><span style="color:var(--text3);font-size:11px;">\u00b7</span>' : '';
+  var initialsHTML = t.initials ? '<span class="task-bed" style="color:var(--text2);">'+esc(t.initials)+'</span>' : '';
+  var waitingHTML = t.waitingOn ? '<div class="task-notes" style="color:#818cf8;">\u21BB '+esc(t.waitingOn)+'</div>' : '';
+  var notesHTML = t.notes ? '<div class="task-notes">'+esc(t.notes)+'</div>' : '';
+  return '<div class="task-wrap" id="twrap-'+t.id+'">'
+    +'<div class="task-swipe-bg"><span class="task-swipe-bg-icon">\u2713</span></div>'
+    +'<div class="'+taskCls+'" id="task-'+t.id+'"'
+    +' onclick="openModal('+t.id+')"'
+    +' ontouchstart="swipeStart(event,'+t.id+')"'
+    +' ontouchmove="swipeMove(event,'+t.id+')"'
+    +' ontouchend="swipeEnd(event,'+t.id+')">'
+    +'<div class="task-check"></div>'
+    +'<div class="task-body">'
+    +'<div class="task-meta">'
+    +wardHTML
+    +'<span class="task-bed">'+esc(t.bed)+'</span>'
+    +initialsHTML
+    +'<span class="type-badge '+typeBadgeClass(t.type)+'">'+t.type.toUpperCase()+'</span>'
+    +'<span class="task-time">'+fmtTime(t.created)+'</span>'
+    +'</div>'
+    +'<div class="task-name">'+esc(t.desc)+'</div>'
+    +waitingHTML
+    +escalationBadge
+    +notesHTML
+    +'</div>'
+    +'</div>'
+    +'</div>';
 }
 
 // ── Swipe to complete ──
@@ -1175,10 +1182,30 @@ function openModal(id){
   const wb=document.getElementById('modal-waiting-btn');
   wb.textContent=t.status==='waiting'?'Mark as pending':'Mark as waiting';
   wb.style.display=t.status==='done'?'none':'block';
+  const hb=document.getElementById('modal-handover-btn');
+  const alreadyInHandover=S.hoEntries&&S.hoEntries.some(e=>e.ward===t.ward&&e.bed===t.bed);
+  hb.textContent=alreadyInHandover?'Already in handover':'Add to handover';
+  hb.style.opacity=alreadyInHandover?'0.5':'1';
+  hb.style.pointerEvents=alreadyInHandover?'none':'auto';
   document.getElementById('task-modal').classList.add('open');
 }
 function bgClose(e){ if(e.target===document.getElementById('task-modal')) closeModal(); }
 function closeModal(){ document.getElementById('task-modal').classList.remove('open'); modalId=null; }
+function modalAddToHandover(){
+  const t=S.tasks.find(t=>t.id===modalId); if(!t) return;
+  if(!S.hoEntries) S.hoEntries=[];
+  const already=S.hoEntries.some(e=>e.ward===t.ward&&e.bed===t.bed);
+  if(already){ toast('Already in handover'); closeModal(); return; }
+  // pull all outstanding tasks for this ward+bed
+  const tasks=shiftTasks().filter(t2=>t2.ward===t.ward&&t2.bed===t.bed&&t2.status!=='done');
+  const jobs=tasks.map(t2=>t2.type.toUpperCase()+': '+t2.desc+(t2.waitingOn?' [waiting: '+t2.waitingOn+']':''));
+  S.hoEntries.push({
+    ward:t.ward, bed:t.bed, initials:t.initials||'',
+    name:'', admission:'', ceiling:'none', resus:'for',
+    situation:'', jobs:jobs, instructions:'',
+  });
+  save(); closeModal(); toast('Added to handover');
+}{ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.status=t.status==='done'?'pending':'done'; t.done=t.status==='done'; save(); closeModal(); renderList(); }
 function modalToggleDone(){ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.status=t.status==='done'?'pending':'done'; t.done=t.status==='done'; save(); closeModal(); renderList(); }
 function modalSetWaiting(){ const t=S.tasks.find(t=>t.id===modalId); if(!t) return; t.status=t.status==='waiting'?'pending':'waiting'; t.done=false; save(); closeModal(); renderList(); }
 function modalEdit(){
@@ -1375,7 +1402,7 @@ function renderShiftTypeSettings(){
         </label>
       </div>
       <div class="shift-edit-wards" id="shift-wards-${i}">
-        ${S.wards.map(w=>`<div class="shift-edit-ward ${(st.defaultWards||[]).includes(w)?'on':''}" onclick="toggleShiftDefaultWard(${i},'${esc(w)}',this)">${esc(w)}</div>`).join('')}
+        ${S.wards.map(w=>'<div class="shift-edit-ward '+((st.defaultWards||[]).includes(w)?'on':'')+' " onclick="toggleShiftDefaultWard('+i+',\''+esc(w)+'\',this)">'+esc(w)+'</div>').join('')}
       </div>
     </div>`).join('');
 }
@@ -1443,13 +1470,15 @@ function importData(event){
   const reader=new FileReader();
   reader.onload=e=>{
     try{
-      const data=JSON.parse(e.target.result);
+      const text=e.target.result.trim().replace(/^\uFEFF/,''); // strip BOM if present
+      const data=JSON.parse(text);
+      if(!data||typeof data!=='object'){ toast('Invalid backup — not a valid backup file'); return; }
       if(!confirm('This will replace all current data. Continue?')) return;
       S=Object.assign(S,data); save();
-      buildNavs(); buildFilterChips(); populateWardDrop(); populateTaskTypeDrop();
+      buildNavs(); populateWardDrop(); populateTaskTypeDrop();
       renderList(); renderSettings();
       toast('Backup imported');
-    }catch(err){ toast('Invalid backup file'); }
+    }catch(err){ toast('Import failed: '+err.message.slice(0,60)); }
   };
   reader.readAsText(file);
   event.target.value='';
@@ -1583,7 +1612,7 @@ function renderThemeGrid(){
   grid.innerHTML = THEMES.map(t=>{
     const overrides = (S.themeOverrides&&S.themeOverrides[t.id])||{};
     const c = Object.assign({}, t.colors, overrides);
-    return `<div class="theme-swatch ${S.activeTheme===t.id?'active':''}" onclick="selectTheme('${t.id}')">
+    return '<div class="theme-swatch '+(S.activeTheme===t.id?'active':'')+' " onclick="selectTheme(\''+t.id+'\')">';
       <div class="theme-swatch-preview">
         <div class="theme-swatch-bg" style="background:${c.s1};"></div>
         <div class="theme-swatch-stripes">
@@ -1751,74 +1780,67 @@ function copyHandover(){
 // ════════════════════════════════════════
 function renderHandoverScreen(){
   if(!S.hoEntries) S.hoEntries=[];
+
+  // sort entries by ward order then bed number
+  const wardOrder=S.shift?S.shift.wards:[];
+  S.hoEntries.sort((a,b)=>{
+    const wi=wardOrder.indexOf(a.ward), wj=wardOrder.indexOf(b.ward);
+    const wo=(wi===-1?999:wi)-(wj===-1?999:wj);
+    if(wo!==0) return wo;
+    const an=parseInt((a.bed||'').replace(/\D/g,''),10);
+    const bn=parseInt((b.bed||'').replace(/\D/g,''),10);
+    if(!isNaN(an)&&!isNaN(bn)) return an-bn;
+    return (a.bed||'').localeCompare(b.bed||'');
+  });
+
   const scroll=document.getElementById('ho-screen-scroll');
   const count=document.getElementById('ho-entry-count');
   count.textContent=S.hoEntries.length?S.hoEntries.length+' entries':'';
 
   let html='';
-
-  // Summary + new entry buttons
   if(S.hoEntries.length){
-    html+=`<button class="ho-summary-btn" onclick="showHoSummary()">View &amp; copy handover summary</button>`;
+    html+=`<button class="ho-summary-btn" onclick="showHoSummary()">View handover summary</button>`;
   }
   html+=`<button class="ho-new-btn" onclick="addHoEntry()">+ Add patient manually</button>`;
 
-  // Patient picker from task list
-  if(S.shift){
-    const all=shiftTasks();
-    const wards=S.shift.wards;
-    wards.forEach(ward=>{
-      const wardTasks=all.filter(t=>t.ward===ward);
-      if(!wardTasks.length) return;
-      // unique bed+initials combos from ALL tasks (not just outstanding)
-      const seen=new Set();
-      const patients=[];
-      wardTasks.forEach(t=>{
-        const key=ward+'|'+t.bed+'|'+t.initials;
-        if(!seen.has(key)){
-          seen.add(key);
-          patients.push({ward,bed:t.bed,initials:t.initials});
-        }
-      });
-      // sort by bed number naturally
-      patients.sort((a,b)=>{
-        const an=parseInt((a.bed||'').replace(/\D/g,''),10);
-        const bn=parseInt((b.bed||'').replace(/\D/g,''),10);
-        if(!isNaN(an)&&!isNaN(bn)) return an-bn;
-        return (a.bed||'').localeCompare(b.bed||'');
-      });
-      if(!patients.length) return;
-      html+=`<div class="ho-pick-section"><div class="ho-pick-label">${esc(ward)}</div>`;
-      patients.forEach(p=>{
-        const alreadyAdded=S.hoEntries.some(e=>e.ward===p.ward&&e.bed===p.bed);
-        const outstanding=wardTasks.filter(t=>t.bed===p.bed&&(t.status==='pending'||t.status==='waiting')).length;
-        html+=`<div class="ho-pick-row">
-          <div class="ho-pick-info">
-            <div class="ho-pick-name">${esc(p.bed)}${p.initials?' · '+esc(p.initials):''}</div>
-            <div class="ho-pick-sub">${outstanding} outstanding job${outstanding!==1?'s':''}</div>
-          </div>
-          ${alreadyAdded
-            ? `<span style="font-size:11px;color:var(--text3);">Added</span>`
-            : `<span class="ho-add-btn" onclick="addHoFromTask('${esc(p.ward)}','${esc(p.bed)}','${esc(p.initials)}')">Add to handover</span>`
-          }
-        </div>`;
-      });
-      html+='</div>';
-    });
-  }
-
-  // Existing entries
   if(S.hoEntries.length){
-    html+=`<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin:16px 0 10px;">Handover entries</div>`;
-    S.hoEntries.forEach((entry,i)=>{
-      html+=buildHoEntry(entry,i);
-    });
+    html+=`<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin:4px 0 10px;">Entries</div>`;
+    S.hoEntries.forEach((entry,i)=>{ html+=buildHoEntry(entry,i); });
+  } else {
+    html+=`<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:14px;">No entries yet.<br>Tap ⋯ on any task to add a patient.</div>`;
   }
 
   scroll.innerHTML=html;
 }
 
 function buildHoEntry(entry,i){
+  const expanded=entry._expanded||false;
+  const ceilLabels={none:'No ceiling',l1:'Level 1',l2:'Level 2',l3:'Level 3'};
+  const resusLabels={for:'For resus',not:'Not for resus'};
+  const jobCount=(entry.jobs||[]).length;
+  const jobsExpanded=entry._jobsExpanded||false;
+
+  // collapsed header
+  const nameLine=entry.name||'<span style="color:var(--text3)">No name</span>';
+  const locLine=`${esc(entry.ward||'')}${entry.bed?' · '+esc(entry.bed):''}`;
+  const ceilLine=ceilLabels[entry.ceiling]||'No ceiling';
+  const resusLine=resusLabels[entry.resus]||'For resus';
+  const completeness=entry.name&&entry.situation?'✓':'';
+
+  if(!expanded){
+    return `<div class="ho-entry" id="hoe-${i}">
+      <div class="ho-entry-hdr" onclick="toggleHoEntry(${i})" style="cursor:pointer;">
+        <div style="flex:1;">
+          <div class="ho-entry-name">${nameLine} ${completeness?`<span style="color:var(--low);font-size:11px;">${completeness}</span>`:''}</div>
+          <div class="ho-entry-loc">${locLine} &nbsp;·&nbsp; ${esc(ceilLine)} &nbsp;·&nbsp; ${esc(resusLine)}${jobCount?` &nbsp;·&nbsp; ${jobCount} job${jobCount!==1?'s':''}`:''}</div>
+        </div>
+        <span style="color:var(--text3);font-size:13px;margin-right:8px;">▶</span>
+        <span class="ho-entry-del" onclick="event.stopPropagation();removeHoEntry(${i})">×</span>
+      </div>
+    </div>`;
+  }
+
+  // expanded
   const ceilOpts=[
     {v:'none',l:'No ceiling',cls:'no-ceil'},
     {v:'l1',l:'Level 1',cls:'l1'},
@@ -1829,9 +1851,8 @@ function buildHoEntry(entry,i){
     {v:'for',l:'For resus',cls:'for-resus'},
     {v:'not',l:'Not for resus',cls:'not-resus'},
   ];
-
-  const ceilHtml=ceilOpts.map(o=>`<span class="ho-opt ho-ceil-opt-${i} ${entry.ceiling===o.v?'on-'+o.cls:''}" data-val="${o.v}" onclick="setHoCeiling(${i},'${o.v}')">${o.l}</span>`).join('');
-  const resusHtml=resusOpts.map(o=>`<span class="ho-opt ho-resus-opt-${i} ${entry.resus===o.v?'on-'+o.cls:''}" data-val="${o.v}" onclick="setHoResus(${i},'${o.v}')">${o.l}</span>`).join('');
+  const ceilHtml=ceilOpts.map(o=>'<span class="ho-opt ho-ceil-opt-'+i+' '+(entry.ceiling===o.v?'on-'+o.cls:'')+' " data-val="'+o.v+'" onclick="setHoCeiling('+i+',\''+o.v+'\')">'+(o.l)+'</span>').join('');
+  const resusHtml=resusOpts.map(o=>'<span class="ho-opt ho-resus-opt-'+i+' '+(entry.resus===o.v?'on-'+o.cls:'')+' " data-val="'+o.v+'" onclick="setHoResus('+i+',\''+o.v+'\')">'+(o.l)+'</span>').join('');
 
   const jobsHtml=(entry.jobs||[]).map((j,ji)=>`
     <div class="ho-job-row">
@@ -1839,13 +1860,14 @@ function buildHoEntry(entry,i){
       <span class="ho-job-del" onclick="removeHoJob(${i},${ji})">×</span>
     </div>`).join('');
 
-  return `<div class="ho-entry">
-    <div class="ho-entry-hdr">
-      <div>
-        <div class="ho-entry-name">${esc(entry.name)||'<span style="color:var(--text3)">No name</span>'}</div>
-        <div class="ho-entry-loc">${esc(entry.ward)}${entry.bed&&entry.bed!=='—'?' · '+esc(entry.bed):''}</div>
+  return `<div class="ho-entry" id="hoe-${i}">
+    <div class="ho-entry-hdr" onclick="toggleHoEntry(${i})" style="cursor:pointer;">
+      <div style="flex:1;">
+        <div class="ho-entry-name">${nameLine}</div>
+        <div class="ho-entry-loc">${locLine}</div>
       </div>
-      <span class="ho-entry-del" onclick="removeHoEntry(${i})">×</span>
+      <span style="color:var(--text3);font-size:13px;margin-right:8px;">▼</span>
+      <span class="ho-entry-del" onclick="event.stopPropagation();removeHoEntry(${i})">×</span>
     </div>
     <div class="ho-entry-body">
       <div class="ho-field">
@@ -1863,47 +1885,60 @@ function buildHoEntry(entry,i){
         <label>Admission details</label>
         <input type="text" value="${esc(entry.admission||'')}" placeholder="e.g. 72M admitted with AKI on CKD" oninput="setHoField(${i},'admission',this.value)" autocomplete="off">
       </div>
-      <div class="ho-selects">
-        <div class="ho-sel-group">
-          <div class="ho-sel-label">Ceiling of care</div>
-          <div class="ho-opts">${ceilHtml}</div>
-        </div>
-        <div class="ho-sel-group">
-          <div class="ho-sel-label">Resus status</div>
-          <div class="ho-opts">${resusHtml}</div>
-        </div>
+      <div class="ho-field">
+        <label>Ceiling of care</label>
+        <div class="ho-opts">${ceilHtml}</div>
+      </div>
+      <div class="ho-field">
+        <label>Resus status</label>
+        <div class="ho-opts">${resusHtml}</div>
       </div>
       <div class="ho-field">
         <label>Where we are</label>
-        <textarea placeholder="Current clinical situation, what's happened, what's pending..." oninput="setHoField(${i},'situation',this.value)">${esc(entry.situation||'')}</textarea>
+        <textarea placeholder="Current situation..." oninput="setHoField(${i},'situation',this.value)">${esc(entry.situation||'')}</textarea>
       </div>
       <div class="ho-field">
-        <label>Outstanding jobs</label>
-        ${jobsHtml}
+        <label style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="toggleHoJobs(${i})">
+          <span>Outstanding jobs (${jobCount})</span>
+          <span style="color:var(--text3);font-size:11px;">${jobsExpanded?'▲ hide':'▼ show'}</span>
+        </label>
+        ${jobsExpanded?`${jobsHtml}
         <div class="ho-add-job-row">
-          <input type="text" class="ho-add-job-inp" id="ho-job-inp-${i}" placeholder="Add job..." autocomplete="off" onkeydown="if(event.key==='Enter') addHoJob(${i})">
+          <input type="text" class="ho-job-inp" id="ho-job-inp-${i}" placeholder="Add job..." autocomplete="off" onkeydown="if(event.key==='Enter') addHoJob(${i})">
           <button class="ho-add-job-btn" onclick="addHoJob(${i})">Add</button>
-        </div>
+        </div>`:''}
       </div>
       <div class="ho-field">
-        <label>Specific instructions for night team</label>
-        <textarea placeholder="e.g. If sats drop below 92% call reg, repeat U&Es at 06:00..." oninput="setHoField(${i},'instructions',this.value)">${esc(entry.instructions||'')}</textarea>
+        <label>Specific instructions</label>
+        <textarea placeholder="e.g. Repeat U&Es at 06:00, call reg if..." oninput="setHoField(${i},'instructions',this.value)">${esc(entry.instructions||'')}</textarea>
       </div>
     </div>
   </div>`;
 }
 
+
+function toggleHoEntry(i){
+  if(!S.hoEntries[i]) return;
+  S.hoEntries[i]._expanded=!S.hoEntries[i]._expanded;
+  renderHandoverScreen();
+}
+function toggleHoJobs(i){
+  if(!S.hoEntries[i]) return;
+  S.hoEntries[i]._jobsExpanded=!S.hoEntries[i]._jobsExpanded;
+  renderHandoverScreen();
+}
+
 function addHoEntry(ward,bed,initials,jobs){
   if(!S.hoEntries) S.hoEntries=[];
   S.hoEntries.push({
-    ward:ward||'', bed:bed||'', name:'',
+    ward:ward||'', bed:bed||'', initials:initials||'', name:'',
     admission:'', ceiling:'none', resus:'for',
     situation:'', jobs:jobs||[], instructions:'',
+    _expanded:true, _jobsExpanded:!!(jobs&&jobs.length),
   });
   save(); renderHandoverScreen();
-  // scroll to bottom
   const sc=document.getElementById('ho-screen-scroll');
-  setTimeout(()=>{ sc.scrollTop=sc.scrollHeight; },100);
+  setTimeout(()=>{ if(sc) sc.scrollTop=sc.scrollHeight; },100);
 }
 
 function addHoFromTask(ward,bed,initials){
