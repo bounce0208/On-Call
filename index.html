@@ -860,6 +860,15 @@ document.addEventListener('DOMContentLoaded',function(){
   if(bqn) bqn.addEventListener('keydown',function(ev){if(ev.key==='Enter')addBleep();});
   if(bqno) bqno.addEventListener('keydown',function(ev){if(ev.key==='Enter')addBleep();});
 });
+function logBleepAsTask(id){
+  var b=S.bleeps.find(function(b){return b.id===id;});if(!b)return;
+  rsForm();
+  curType='bleep';
+  document.getElementById('f-desc').value='Bleep '+b.num+(b.notes?' \u2014 '+b.notes:'');
+  bTypeGrid();
+  sScr('screen-add');
+  setTimeout(function(){document.getElementById('f-desc').focus();},250);
+}
 function clrBleep(id){
   if(!S.bleeps)return;
   S.bleeps=S.bleeps.filter(function(b){return b.id!==id;});
@@ -883,7 +892,10 @@ function rBleepQ(){
       +(b.notes?'<div class="bq-notes-txt">'+e(b.notes)+'</div>':'')
       +'<div class="bq-time">'+fmtTime(b.added)+' \u00b7 '+timeAgo(b.added)+'</div>'
       +'</div>'
-      +'<button class="bq-clr" onclick="clrBleep('+b.id+')">Clear</button>'
+      +'<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">'
+      +'<button class="bq-clr" onclick="logBleepAsTask('+b.id+')">Log</button>'
+      +'<button class="bq-clr" style="background:transparent;border-color:var(--urgent-line);color:var(--urgent);" onclick="clrBleep('+b.id+')">Clear</button>'
+      +'</div>'
       +'</div>';
   }).join('');
 }
