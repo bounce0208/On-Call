@@ -407,6 +407,46 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   </div>
 </div>
 
+<!-- HANDOVER RECEIVER -->
+<div class="screen" id="screen-hxover">
+  <div class="fhdr">
+    <div class="bk" onclick="cancelHxover()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg></div>
+    <h2>Receiving handover</h2>
+    <button class="svbtn" onclick="finishHxover()">Start shift</button>
+  </div>
+  <div class="fs" id="hxover-scroll">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Add each patient as they're handed over. Tap <strong>Add next</strong> after each one.</div>
+    <div id="hxover-added"></div>
+    <div id="hxover-card">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;" id="hxover-pt-num">Patient 1</div>
+      <div class="fr">
+        <div class="field"><label>Ward</label><select id="hx-ward"></select></div>
+        <div class="field"><label>Bed</label><input type="text" id="hx-bed" placeholder="e.g. B4" maxlength="12" autocomplete="off"></div>
+      </div>
+      <div class="fr">
+        <div class="field"><label>Initials</label><input type="text" id="hx-initials" placeholder="e.g. JB" maxlength="5" autocomplete="off" style="text-transform:uppercase;"></div>
+        <div class="field"><label>Hospital ID</label><input type="text" id="hx-hosid" placeholder="e.g. 123456" maxlength="20" autocomplete="off" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label>Situation</label><input type="text" id="hx-situation" placeholder="e.g. AKI on CKD, awaiting nephro review" autocomplete="off"></div>
+      <div class="field"><label>Jobs (optional)</label><div id="hx-jobs-list" style="margin-bottom:6px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="hx-job-inp" placeholder="Add a job..." autocomplete="off" style="flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:var(--rs);padding:10px 13px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;">
+          <button onclick="addHxJob()" style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);border-radius:var(--rs);padding:8px 14px;color:#a5b4fc;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Add</button>
+        </div>
+      </div>
+      <div class="field"><label>Priority</label>
+        <div class="sg" id="hx-prio-grp">
+          <div class="so" data-v="urgent" onclick="pickHxPrio(this)">Urgent</div>
+          <div class="so on-routine" data-v="routine" onclick="pickHxPrio(this)">Routine</div>
+          <div class="so" data-v="low" onclick="pickHxPrio(this)">Low</div>
+        </div>
+      </div>
+      <button onclick="addHxNext()" style="width:100%;padding:13px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:8px;">Add next patient</button>
+      <button onclick="finishHxover()" style="width:100%;padding:13px;background:linear-gradient(135deg,#6366f1,#4f46e5);border:none;border-radius:var(--r);color:#fff;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Done &mdash; start shift</button>
+    </div>
+  </div>
+</div>
+
 <!-- TASK LIST -->
 <div class="screen" id="screen-list">
   <div class="hdr">
@@ -445,7 +485,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Ward</label><select id="f-ward"></select></div>
       <div class="field"><label>Bed</label><input type="text" id="f-bed" placeholder="e.g. B4" maxlength="12" autocomplete="off"></div>
     </div>
-    <div class="field" style="max-width:130px;"><label>Initials</label><input type="text" id="f-initials" placeholder="e.g. JB" maxlength="5" autocomplete="off" style="text-transform:uppercase;"></div>
+    <div class="fr">
+      <div class="field" style="max-width:130px;"><label>Initials</label><input type="text" id="f-initials" placeholder="e.g. JB" maxlength="5" autocomplete="off" style="text-transform:uppercase;"></div>
+      <div class="field"><label>Hospital ID</label><input type="text" id="f-hosid" placeholder="e.g. 123456" maxlength="20" autocomplete="off" inputmode="numeric"></div>
+    </div>
     <div class="field"><label>Type</label><div class="ttg" id="f-type-grid"></div></div>
     <div class="field"><label>Priority</label>
       <div class="sg" id="f-prio-grp">
@@ -512,6 +555,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="shift-ward-grid" id="shift-ward-grid"></div>
     </div>
     <button class="start-shift-btn" id="start-shift-btn" onclick="startShift()">Start shift</button>
+    <button class="start-shift-btn" id="recv-hxover-btn" onclick="startShiftWithHxover()" style="background:var(--s2);border:1px solid var(--border2);color:var(--text);box-shadow:none;margin-top:-4px;">Receive handover first</button>
     <div class="history-title" style="margin-top:8px;">Recent shifts</div>
     <div id="history-list"></div>
   </div>
@@ -570,6 +614,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div class="mh"></div>
     <h3 id="tm-title"></h3>
     <div class="md">Ward: <span id="tm-ward"></span> &middot; Bed: <span id="tm-bed"></span></div>
+    <div class="md" id="tm-id-row" style="display:none;">Hospital ID: <span id="tm-hosid"></span></div>
     <div class="md">Type: <span id="tm-type"></span> &middot; Priority: <span id="tm-prio"></span></div>
     <div class="md">Logged: <span id="tm-time"></span></div>
     <div class="md" id="tm-wait-row" style="display:none;">Waiting on: <span id="tm-wait"></span></div>
@@ -848,6 +893,7 @@ function rsForm(){
   document.getElementById('f-desc').value='';
   document.getElementById('f-bed').value='';
   document.getElementById('f-initials').value='';
+  document.getElementById('f-hosid').value='';
   document.getElementById('f-notes').value='';
   document.getElementById('f-escalation').value='';
   document.getElementById('f-waiting-on').value='';
@@ -869,6 +915,7 @@ function saveTask(){
     ward:document.getElementById('f-ward').value,
     bed:document.getElementById('f-bed').value.trim()||'\u2014',
     initials:document.getElementById('f-initials').value.trim().toUpperCase()||'',
+    hosid:document.getElementById('f-hosid').value.trim()||'',
     type:curType||S.taskTypes[0]||'chase',
     prio:curPrio, status:curStatus, done:curStatus==='done',
     waitingOn:document.getElementById('f-waiting-on').value.trim(),
@@ -984,6 +1031,7 @@ function oTM(id){
   document.getElementById('tm-title').textContent=t.desc;
   document.getElementById('tm-ward').textContent=t.ward;
   document.getElementById('tm-bed').textContent=t.initials?t.bed+' \u00b7 '+t.initials:t.bed;
+  var ir=document.getElementById('tm-id-row');ir.style.display=t.hosid?'block':'none';if(t.hosid)document.getElementById('tm-hosid').textContent=t.hosid;
   document.getElementById('tm-type').textContent=cap(t.type);
   document.getElementById('tm-prio').textContent=cap(t.prio);
   document.getElementById('tm-time').textContent=fmtTime(t.created);
@@ -1024,6 +1072,7 @@ function tmEdit(){
   document.getElementById('f-desc').value=t.desc;
   document.getElementById('f-bed').value=t.bed==='\u2014'?'':t.bed;
   document.getElementById('f-initials').value=t.initials||'';
+  document.getElementById('f-hosid').value=t.hosid||'';
   document.getElementById('f-notes').value=t.notes||'';
   document.getElementById('f-escalation').value=t.escalation||'';
   document.getElementById('f-waiting-on').value=t.waitingOn||'';
@@ -1426,7 +1475,169 @@ document.addEventListener('DOMContentLoaded',function(){
   var nwi=document.getElementById('new-ward-inp');if(nwi)nwi.addEventListener('keydown',function(ev){if(ev.key==='Enter')addWard();});
   var swi=document.getElementById('setup-ward-inp');if(swi)swi.addEventListener('keydown',function(ev){if(ev.key==='Enter')addSetupWard();});
   var woi=document.getElementById('wo-inp');if(woi)woi.addEventListener('keydown',function(ev){if(ev.key==='Enter')confirmWO();});
+  var hxji=document.getElementById('hx-job-inp');if(hxji)hxji.addEventListener('keydown',function(ev){if(ev.key==='Enter')addHxJob();});
+  var hxsi=document.getElementById('hx-situation');if(hxsi)hxsi.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();document.getElementById('hx-job-inp').focus();}});
 });
+
+// HANDOVER RECEIVER
+var hxPending=[];
+var hxJobs=[];
+var hxPrio='routine';
+var hxShiftPending=null; // shift to start after hxover
+
+function bHxWardDrop(){
+  var s=document.getElementById('hx-ward');if(!s)return;
+  var wards=hxShiftPending?hxShiftPending.wards:S.wards;
+  s.innerHTML=wards.map(function(w){return'<option value="'+e(w)+'">'+e(w)+'</option>';}).join('');
+}
+
+function pickHxPrio(el){
+  hxPrio=el.dataset.v;
+  document.querySelectorAll('#hx-prio-grp .so').forEach(function(o){o.className='so';});
+  el.classList.add('on-'+hxPrio);
+}
+
+function rsHxCard(){
+  hxJobs=[];hxPrio='routine';
+  document.getElementById('hx-bed').value='';
+  document.getElementById('hx-initials').value='';
+  document.getElementById('hx-hosid').value='';
+  document.getElementById('hx-situation').value='';
+  document.getElementById('hx-job-inp').value='';
+  document.getElementById('hx-jobs-list').innerHTML='';
+  document.querySelectorAll('#hx-prio-grp .so').forEach(function(o){o.className='so';});
+  document.querySelector('#hx-prio-grp [data-v="routine"]').classList.add('on-routine');
+  document.getElementById('hxover-pt-num').textContent='Patient '+(hxPending.length+1);
+  bHxWardDrop();
+}
+
+function addHxJob(){
+  var inp=document.getElementById('hx-job-inp');
+  var v=inp.value.trim();if(!v)return;
+  hxJobs.push(v);inp.value='';
+  var el=document.getElementById('hx-jobs-list');
+  el.innerHTML=hxJobs.map(function(j,i){
+    return '<div class="ho-job-row"><span class="ho-job-txt">'+e(j)+'</span><span class="ho-job-del" onclick="removeHxJob('+i+')">\u00d7</span></div>';
+  }).join('');
+}
+
+function removeHxJob(i){
+  hxJobs.splice(i,1);
+  document.getElementById('hx-jobs-list').innerHTML=hxJobs.map(function(j,idx){
+    return '<div class="ho-job-row"><span class="ho-job-txt">'+e(j)+'</span><span class="ho-job-del" onclick="removeHxJob('+idx+')">\u00d7</span></div>';
+  }).join('');
+}
+
+function addHxNext(){
+  var ward=document.getElementById('hx-ward').value;
+  var bed=document.getElementById('hx-bed').value.trim();
+  var initials=document.getElementById('hx-initials').value.trim().toUpperCase();
+  var hosid=document.getElementById('hx-hosid').value.trim();
+  var situation=document.getElementById('hx-situation').value.trim();
+  if(!ward&&!bed&&!situation){ toast('Add at least a ward or situation'); return; }
+  hxPending.push({ward:ward,bed:bed||'\u2014',initials:initials,hosid:hosid,situation:situation,jobs:hxJobs.slice(),prio:hxPrio});
+  rHxAdded();
+  rsHxCard();
+  // scroll to top of card
+  setTimeout(function(){document.getElementById('hxover-scroll').scrollTop=0;},100);
+}
+
+function rHxAdded(){
+  var el=document.getElementById('hxover-added');
+  if(!hxPending.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="margin-bottom:14px;">'
+    +hxPending.map(function(p,i){
+      return '<div style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:var(--rs);padding:8px 12px;margin-bottom:5px;">'
+        +'<div style="flex:1;font-size:13px;color:var(--text);">'+e(p.ward)+(p.bed&&p.bed!=='\u2014'?' \u00b7 '+e(p.bed):'')+(p.initials?' \u00b7 '+e(p.initials):'')+(p.situation?' \u2014 <span style=\"color:var(--text2)\">'+e(p.situation)+'</span>':'')+'</div>'
+        +'<span style="color:var(--text3);font-size:15px;cursor:pointer;" onclick="removeHxPending('+i+')">\u00d7</span>'
+        +'</div>';
+    }).join('')
+    +'</div>';
+}
+
+function removeHxPending(i){
+  hxPending.splice(i,1);
+  rHxAdded();
+  document.getElementById('hxover-pt-num').textContent='Patient '+(hxPending.length+1);
+}
+
+function startShiftWithHxover(){
+  if(!selShiftId){toast('Pick a shift type first');return;}
+  var st=S.shiftTypes.find(function(s){return s.id===selShiftId;});
+  if(!selWards.length){toast('Select at least one ward');return;}
+  var date=document.getElementById('shift-date').value||todayStr();
+  // build shift object but don't commit yet
+  hxShiftPending={
+    id:Date.now(),type:selShiftId,label:st?st.name:selShiftId,
+    date:date,wards:selWards.slice(),started:Date.now(),bleepCount:0
+  };
+  hxPending=[];hxJobs=[];hxPrio='routine';
+  rsHxCard();rHxAdded();
+  showScreen('screen-hxover');
+  setTimeout(function(){document.getElementById('hx-bed').focus();},300);
+}
+
+function cancelHxover(){
+  hxShiftPending=null;hxPending=[];
+  gNav('shift');
+}
+
+function finishHxover(){
+  // commit the shift
+  if(S.shift){S.history.unshift(Object.assign({},S.shift));if(S.history.length>5)S.history.pop();}
+  S.shift=hxShiftPending;
+  S.hoEntries=[];S.bleeps=[];
+
+  // if there's a partially filled card, add it too
+  var bed=document.getElementById('hx-bed').value.trim();
+  var situation=document.getElementById('hx-situation').value.trim();
+  var ward=document.getElementById('hx-ward').value;
+  if(bed||situation){
+    hxPending.push({
+      ward:ward,bed:bed||'\u2014',
+      initials:document.getElementById('hx-initials').value.trim().toUpperCase(),
+      hosid:document.getElementById('hx-hosid').value.trim(),
+      situation:situation,jobs:hxJobs.slice(),prio:hxPrio
+    });
+  }
+
+  // create tasks and handover entries from pending patients
+  hxPending.forEach(function(p){
+    // add situation as a review task
+    if(p.situation){
+      S.tasks.unshift({
+        id:S.nextId++,desc:p.situation,ward:p.ward,bed:p.bed,
+        initials:p.initials,hosid:p.hosid,type:'review',
+        prio:p.prio,status:'pending',done:false,
+        waitingOn:'',escalation:'',notes:'',
+        shiftId:S.shift.id,created:Date.now(),
+      });
+    }
+    // add individual jobs as tasks
+    p.jobs.forEach(function(j){
+      S.tasks.unshift({
+        id:S.nextId++,desc:j,ward:p.ward,bed:p.bed,
+        initials:p.initials,hosid:p.hosid,type:'chase',
+        prio:p.prio,status:'pending',done:false,
+        waitingOn:'',escalation:'',notes:'',
+        shiftId:S.shift.id,created:Date.now(),
+      });
+    });
+    // add to handover entries
+    var allJobs=[p.situation?('REVIEW: '+p.situation):''].concat(p.jobs).filter(Boolean);
+    S.hoEntries.push({
+      ward:p.ward,bed:p.bed,initials:p.initials,name:'',
+      admission:'',ceiling:'none',resus:'for',
+      situation:p.situation||'',jobs:allJobs,instructions:'',
+      _exp:false,_jobsExp:false,
+    });
+  });
+
+  hxShiftPending=null;hxPending=[];
+  sv();uPill();
+  toast('Shift started \u00b7 '+S.tasks.filter(function(t){return t.shiftId===S.shift.id;}).length+' tasks loaded');
+  gNav('tasks');
+}
 
 // SERVICE WORKER
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').then(function(r){r.addEventListener('updatefound',function(){var nw=r.installing;nw.addEventListener('statechange',function(){if(nw.state==='installed'&&navigator.serviceWorker.controller)toast('Update ready \u2014 close and reopen');});});}).catch(function(){});}
